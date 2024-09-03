@@ -187,6 +187,7 @@ docker exec -it test1 env
 push docker image into docker hub for further use
 docker push prasannakumarsinganamalla431/terapack_nginix:v1
 
+docker system prune ---------> clear unused containers /network /dangling images etc....
 ====================================================================================
 =====================================================================================
 
