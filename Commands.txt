@@ -177,17 +177,129 @@ RUN wget https://releases.hashicorp.com/terraform/${T_VERSION}/terraform_${T_VER
 
 CMD ["nginx", "-g", "daemon off;"]
  
+ 
 >> nginix
 
 docker build -t prasannakumarsinganamalla431/terapack_nginix:v1 -f nginx .
+we cam override args at the build time 
+docker build -t prasannakumarsinganamalla431/terapack_nginix:v1 --build-arg T_VERSION=1.6.6  P_VERSION=1.8.0   -f nginx .
+
 docker run -d --name test1 -p 8080:8080 prasannakumarsinganamalla431/terapack_nginix:v1
+
+we can add override environmental variables at the runtime 
+docker run -d --name test1  -p 8080:8080 -e AWS_ACCESS_KEY_ID=SDFSDFSDFSDFSDFSDFSDFSDF AWS_SECRET_KEY_ID=SDSDSDSDSDSDSDSDSDSDSDSD AWS_DEFAULT_REGION=US-EAST-1A   prasannakumarsinganamalla431/terapack_nginix:v1
+
+
 docker exec -it test1 bash
 docker exec -it test1 env
 
 push docker image into docker hub for further use
 docker push prasannakumarsinganamalla431/terapack_nginix:v1
 
-docker system prune ---------> clear unused containers /network /dangling images etc....
-====================================================================================
-=====================================================================================
 
+
+
+
+let us  understand the exact difference between CMD and ENTRYPOINT
+
+Specifies the default command to run when a container starts. This command can be overridden by providing a different command at runtime.
+where as ENDPOINT can not be modified at the runtime .
+in real time devops engineer's use the combination of CMD and ENTRYPOINTS based on the requirement
+
+
+FROM ubuntu:latest
+
+LABEL Name="Prasannakumar"
+
+# Install necessary packages including iputils-ping
+RUN apt update && apt install -y jq net-tools curl wget unzip nginx iputils-ping
+
+# Use the CMD instruction to run the ping command
+CMD ["ping", "-c4", "www.youtube.com"]
+
+>> cmdendpointdemo
+
+docker build -t pingdemo:v1 -f cmdendpointdemo .
+
+ docker run pingdemo:v1
+ PING youtube-ui.l.google.com (142.250.205.238) 56(84) bytes of data.
+64 bytes from 142.250.205.238: icmp_seq=1 ttl=63 time=22.3 ms
+64 bytes from 142.250.205.238: icmp_seq=2 ttl=63 time=24.1 ms
+64 bytes from 142.250.205.238: icmp_seq=3 ttl=63 time=21.7 ms
+64 bytes from 142.250.205.238: icmp_seq=4 ttl=63 time=22.6 ms
+
+--- youtube-ui.l.google.com ping statistics ---
+4 packets transmitted, 4 received, 0% packet loss, time 3005ms
+rtt min/avg/max/mdev = 21.670/22.662/24.092/0.891 ms
+
+overridden command
+docker run pingdemo:v1 /usr/bin/ping -c4 www.google.com
+PING www.google.com (142.250.183.228) 56(84) bytes of data.
+64 bytes from 142.250.183.228: icmp_seq=1 ttl=63 time=21.1 ms
+64 bytes from 142.250.183.228: icmp_seq=2 ttl=63 time=19.9 ms
+64 bytes from 142.250.183.228: icmp_seq=3 ttl=63 time=20.1 ms
+64 bytes from 142.250.183.228: icmp_seq=4 ttl=63 time=19.1 ms
+
+--- www.google.com ping statistics ---
+4 packets transmitted, 4 received, 0% packet loss, time 3004ms
+rtt min/avg/max/mdev = 19.136/20.061/21.138/0.714 ms
+
+if we use ENTRYPOINT we can't override as such  
+
+FROM ubuntu:latest
+
+LABEL Name="Prasannakumar"
+
+# Install necessary packages including iputils-ping
+RUN apt update && apt install -y jq net-tools curl wget unzip nginx iputils-ping
+
+# Use the CMD instruction to run the ping command
+ENTRYPOINT ["ping", "-c4", "www.youtube.com"]
+
+>>entrypointdemo
+
+docker build -t entrypoint:v1 -f entrypointdemo .
+
+kumar@LAPTOP-R0LFCE9D:~/Docker-Zero-to-Hero/examples$ docker run entrypoint:v1
+PING youtube-ui.l.google.com (142.250.195.110) 56(84) bytes of data.
+64 bytes from 142.250.195.110: icmp_seq=1 ttl=63 time=18.8 ms
+64 bytes from 142.250.195.110: icmp_seq=2 ttl=63 time=19.3 ms
+64 bytes from 142.250.195.110: icmp_seq=3 ttl=63 time=17.8 ms
+64 bytes from 142.250.195.110: icmp_seq=4 ttl=63 time=17.4 ms
+
+--- youtube-ui.l.google.com ping statistics ---
+4 packets transmitted, 4 received, 0% packet loss, time 3005ms
+rtt min/avg/max/mdev = 17.366/18.324/19.303/0.759 ms
+
+=======================================
+trying to override
+ docker run entrypoint:v1 www.google.com
+PING www.google.com (142.250.183.228) 56(124) bytes of data.
+
+--- www.google.com ping statistics ---
+4 packets transmitted, 0 received, 100% packet loss, time 3115ms
+---------------------------------------------
+we can use --entrypoint falg to override by this is not good practice in production usecase
+
+kumar@LAPTOP-R0LFCE9D:~/Docker-Zero-to-Hero/examples$ docker run --entrypoint /usr/bin/ping entrypoint:v1 -c4 www.google.com
+PING www.google.com (142.250.196.68) 56(84) bytes of data.
+64 bytes from 142.250.196.68: icmp_seq=1 ttl=63 time=22.0 ms
+64 bytes from 142.250.196.68: icmp_seq=2 ttl=63 time=23.4 ms
+64 bytes from 142.250.196.68: icmp_seq=3 ttl=63 time=23.3 ms
+64 bytes from 142.250.196.68: icmp_seq=4 ttl=63 time=21.4 ms
+
+--- www.google.com ping statistics ---
+4 packets transmitted, 4 received, 0% packet loss, time 3005ms
+rtt min/avg/max/mdev = 21.411/22.517/23.361/0.849 ms
+====================================================================================
+====================================================================================
+
+EXPOSE command
+
+EXPOSE 8080
+
+Yes, in a Dockerfile, the EXPOSE instruction is used primarily for documentation 
+purposes to indicate that the container listens on the specified network ports at runtime.
+ It does not actually publish the port; it only serves as a hint to users and tools about which
+  ports are intended to be exposed.
+-------------------------------------------------------------------------------------
