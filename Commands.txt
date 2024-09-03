@@ -1,0 +1,192 @@
+docker day2 :
+
+Topic custom bridge network:
+---------------------------------------
+pull docker image 
+docker pull kiran2361993/troubleshootingtools:v1
+
+Run: 
+docker run -d --name app1 -p 8080:80 kiran2361993/troubleshootingtools:v1
+docker run -d --name app2 -p 8081:80 kiran2361993/troubleshootingtools:v1
+
+inspect the containers and know there IPAddress
+docker inspect app1 | grep -i IPAddress
+docker inspect app2 | grep -i IPAddress
+
+enter into the container app1 
+docker exec -it app1 bash
+ping <app2-IP>                   --------------> it will ping 
+ping <app2-name>              ---------------> it won't ping
+best practice is to ping with the name (label of the container)
+
+now create a custom bridge network
+docker network create --driver bridge customNET  
+verify:
+docker network ls 
+
+now create app3 app4 in the customNET 
+
+docker run -d --name app3 -p 8082:80 --network customNET kiran2361993/troubleshootingtools:v1
+docker run -d --name app4 -p 8083:80 --network customNET kiran2361993/troubleshootingtools:v1
+
+now verify if this app3,4 are added in network 
+docker inspect customNET
+enter into app3 and ping app4
+docker exec -it app3 bash
+ping app4       ------------> it will ping
+ping app1 -------------> it won't because they are in different networks 
+
+now add app1 to customNET 
+docker network connect customNET app1
+
+now verify if this app1 is  added in network 
+docker inspect customNET
+
+enter into app3 and ping app1
+docker exec -it app3 bash
+ping app1       ------------> it will ping as both are in same network.
+
+======================================================================
+======================================================================
+========================================================================
+Day3
+bindmounts &volumeee:
+-------------------------------
+Docker volumes are managed by Docker to persist data across container restarts and are stored in a Docker-specific location. Bind mounts, 
+on the other hand, map an existing host directory or file directly into a container, allowing for direct access and sharing of host data. 
+Volumes are recommended for most use cases, while bind mounts offer more control over the host filesystem.
+
+volumes:
+Create a MongoDB container and add some data to it, then delete the container. Recreate the container and check if the data still exists. Next, perform the same steps, but this time create a volume and attach it to the container before adding the data.
+
+ docker run -d  --name mongodb -p 27017:27017 mongo:latest
+ docker exec -it mongodb mongosh
+ show dbs;
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+then add data :
+
+db.helo.insertMany([
+{ "_id" : 1, "name" : "Matt", "status": "active", "level": 12, "score":202},
+        	{ "_id" : 2, "name" : "Frank", "status": "inactive", "level": 2, "score":9},
+        	{ "_id" : 3, "name" : "Karen", "status": "active", "level": 7, "score":87},
+        	{ "_id" : 4, "name" : "Katie", "status": "active", "level": 3, "score":27, "status": "married", "emp": "yes", "kids": 3},
+        	{ "_id" : 5, "name" : "Matt1", "status": "active", "level": 12, "score":202},
+        	{ "_id" : 6, "name" : "Frank2", "status": "inactive", "level": 2, "score":9},
+        	{ "_id" : 7, "name" : "Karen3", "status": "active", "level": 7, "score":87},
+        	{ "_id" : 8, "name" : "Katie4", "status": "active", "level": 3, "score":27, "status": "married", "emp": "yes", "kids": 3}
+        	])
+
+check:
+
+db.helo.find({name: "Katie"})
+
+==================================================================
+==================================================================
+delete the container 
+docker rm -f mongodb
+
+to remove all the containers
+docker rm -f $(docker ps -aq)
+
+create the container again and check you will not find the data 
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+docker volume create mongodb
+docker run –rm -d  --name mongodb -v mongodb:/data/db -p 27017: 27017 mongo:latest
+ docker exec -it mongodb mongosh
+
+show dbs;
+
+db.helo.insertMany([
+{ "_id" : 1, "name" : "Matt", "status": "active", "level": 12, "score":202},
+        	{ "_id" : 2, "name" : "Frank", "status": "inactive", "level": 2, "score":9},
+        	{ "_id" : 3, "name" : "Karen", "status": "active", "level": 7, "score":87},
+        	{ "_id" : 4, "name" : "Katie", "status": "active", "level": 3, "score":27, "status": "married", "emp": "yes", "kids": 3},
+        	{ "_id" : 5, "name" : "Matt1", "status": "active", "level": 12, "score":202},
+        	{ "_id" : 6, "name" : "Frank2", "status": "inactive", "level": 2, "score":9},
+        	{ "_id" : 7, "name" : "Karen3", "status": "active", "level": 7, "score":87},
+        	{ "_id" : 8, "name" : "Katie4", "status": "active", "level": 3, "score":27, "status": "married", "emp": "yes", "kids": 3}
+        	])
+
+db.helo.find({name: "Katie"})
+
+
+then delete the container and recreate the container by attaching the same volume.then we can see the data
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++==++
+
+bindmounts:
+
+what is docker socket:
+
+es, exactly! The Docker socket (/var/run/docker.sock) acts as a medium between the Docker client and the Docker daemon. 
+When you issue commands using the Docker CLI (the client), those commands are sent through the Docker socket to the Docker daemon. 
+The daemon then interprets these commands and performs the requested actions, such as creating containers, pulling images, or managing networks.
+
+So, the Docker socket facilitates communication and ensures that the commands from the client are received and processed by the daemon.
+
+
+docker run -d --name app1 -p 8080:80 kiran2361993/troubleshootingtools:v1
+docker exec app1 bash 
+
+inside shell
+we can't run docker ps as socket is not there inside the container 
+
+rm the container 
+recreate by attaching the socket bindmount to the container 
+
+docker run --rm -d --name app1 -v /var/run/docker.sock:/var/run/docker.sock --network  none kiran2361993/troubleshootingtools:v1
+docker exec app1 bash 
+inside shell 
+docker ps 
+we will get the output 
+
+FYI,
+here we used network type none as we dont't need this container to communicate with others and no need to even port forward it.
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+create a dockerfile to install terraform and packer in ubuntu base image
+
+FROM ubuntu:latest
+
+LABEL Name="Prasannakumar"
+
+ENV AWS_ACCESS_KEY_ID=SDFSDFSDFSDFSDFSDFSDFSDF \
+    AWS_SECRET_KEY_ID=SDSDSDSDSDSDSDSDSDSDSDSD \
+    AWS_DEFAULT_REGION=US-EAST-1A
+
+RUN apt update && apt install -y jq net-tools curl wget unzip \
+    && apt install -y nginx iputils-ping
+
+ARG T_VERSION='1.6.6'
+ARG P_VERSION='1.8.0'
+
+RUN wget https://releases.hashicorp.com/terraform/${T_VERSION}/terraform_${T_VERSION}_linux_amd64.zip \
+    && wget https://releases.hashicorp.com/packer/${P_VERSION}/packer_${P_VERSION}_linux_amd64.zip \
+    && unzip terraform_${T_VERSION}_linux_amd64.zip \
+    && unzip packer_${P_VERSION}_linux_amd64.zip \
+    && chmod 777 terraform \
+    && chmod 777 packer \
+    && ./terraform version \
+    && ./packer version
+
+CMD ["nginx", "-g", "daemon off;"]
+ 
+>> nginix
+
+docker build -t prasannakumarsinganamalla431/terapack_nginix:v1 -f nginx .
+docker run -d --name test1 -p 8080:8080 prasannakumarsinganamalla431/terapack_nginix:v1
+docker exec -it test1 bash
+docker exec -it test1 env
+
+push docker image into docker hub for further use
+docker push prasannakumarsinganamalla431/terapack_nginix:v1
+
+====================================================================================
+=====================================================================================
+
