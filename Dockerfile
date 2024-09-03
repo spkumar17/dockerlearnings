@@ -23,7 +23,14 @@ RUN wget https://releases.hashicorp.com/terraform/${T_VERSION}/terraform_${T_VER
     && ./terraform version \
     && ./packer version
 
+WORKDIR /app
+
+COPY ./cmdendpointdemo .  
+
+ADD https://releases.hashicorp.com/terraform/${T_VERSION}/terraform_${T_VERSION}_linux_amd64.zip .
+
 CMD ["nginx","-g","daemon off;"]
+
 
 
 # ---
