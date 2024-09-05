@@ -1,0 +1,29 @@
+# Stage 1: Build Stage
+FROM node:18.9.1 AS build
+
+# Set the working directory for the build stage
+WORKDIR /app
+
+# Copy package.json and package-lock.json (if present) to the working directory
+COPY package*.json .
+
+# Install dependencies defined in package.json
+RUN npm install
+
+# Copy the rest of the application code to the working directory
+COPY . .
+
+# Stage 2: Production Stage
+FROM node:18-alpine
+
+# Set the working directory for the production stage
+WORKDIR /app
+
+# Copy the built application code from the build stage to the production stage
+COPY --from=build /app /app
+
+# Expose port 5173 to allow external access
+EXPOSE 5173
+
+# Command to run the application in development mode
+CMD ["npm", "run", "dev"]
