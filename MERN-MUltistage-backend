@@ -35,3 +35,5 @@ EXPOSE 5050
 # In a distroless image, the default entrypoint is 'node', so we provide the script name to run
 CMD ["server.js"]
 
+# Files find the git repo link for the MERN stack application
+# https://github.com/spkumar17/MERN-dockercompose.git
